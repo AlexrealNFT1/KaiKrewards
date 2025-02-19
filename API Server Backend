@@ -1,0 +1,59 @@
+require("dotenv").config();
+const express = require("express");
+const Web3 = require("web3");
+const bodyParser = require("body-parser");
+const cors = require("cors");
+
+const app = express();
+const PORT = process.env.PORT || 5000;
+
+// Connect to Celo blockchain (Testnet/Mainnet)
+const web3 = new Web3(new Web3.providers.HttpProvider(process.env.CELO_RPC_URL));
+
+// Load Contract ABI & Address
+const contractABI = require("./KaiKRewardsABI.json");
+const contractAddress = "0x523f286eFeACC3541F88d4FFdAa13d1Bd0A296f1";
+
+// Load Contract
+const contract = new web3.eth.Contract(contractABI, contractAddress);
+
+// Admin wallet (used to send rewards)
+const adminAddress = process.env.ADMIN_WALLET;
+const adminPrivateKey = process.env.ADMIN_PRIVATE_KEY;
+
+// Middleware
+app.use(cors());
+app.use(bodyParser.json());
+
+// API Endpoint: Reward User with 1 $KaiK Token
+app.post("/reward", async (req, res) => {
+    try {
+        const { userAddress } = req.body;
+        if (!web3.utils.isAddress(userAddress)) {
+            return res.status(400).json({ error: "Invalid user address" });
+        }
+
+        // Encode function call
+        const txData = contract.methods.rewardUser(userAddress).encodeABI();
+
+        // Build Transaction
+        const tx = {
+            from: adminAddress,
+            to: contractAddress,
+            gas: 200000,
+            data: txData,
+        };
+
+        // Sign & Send Transaction
+        const signedTx = await web3.eth.accounts.signTransaction(tx, adminPrivateKey);
+        const txReceipt = await web3.eth.sendSignedTransaction(signedTx.rawTransaction);
+
+        res.json({ success: true, txHash: txReceipt.transactionHash });
+    } catch (error) {
+        console.error("Error rewarding user:", error);
+        res.status(500).json({ error: "Transaction failed" });
+    }
+});
+
+// Start Server
+app.listen(PORT, () => console.log(`API running on port ${PORT}`));

@@ -1,0 +1,2 @@
+npm init -y
+npm install express dotenv cors web3 axios body-parser

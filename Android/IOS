@@ -1,0 +1,12 @@
+import axios from "axios";
+
+const rewardUser = async (userAddress) => {
+  try {
+    const response = await axios.post("https://your-api-url.com/reward", { userAddress });
+    console.log("Transaction Hash:", response.data.txHash);
+    alert("You have earned 1 $KaiK token!");
+  } catch (error) {
+    console.error("Reward failed:", error);
+    alert("Something went wrong, try again.");
+  }
+};
